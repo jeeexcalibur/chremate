@@ -4,6 +4,7 @@ import { RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTransactionStore } from '@/stores/transactions'
 import { useTheme } from '@/composables/useTheme'
+import { Analytics } from '@vercel/analytics/vue'
 
 const authStore = useAuthStore()
 const transactionStore = useTransactionStore()
@@ -14,8 +15,6 @@ onMounted(() => {
   initTheme()
 })
 
-// Global subscription: subscribe when user logs in, cleanup when user logs out.
-// This lives at the app level so navigation between pages doesn't kill the subscription.
 watch(
   () => authStore.user?.uid,
   (uid, oldUid) => {
@@ -31,4 +30,5 @@ watch(
 
 <template>
   <RouterView />
+  <Analytics />
 </template>
