@@ -77,7 +77,7 @@ const chartOptions: ChartOptions<'line'> = {
       padding: 10,
       cornerRadius: 8,
       callbacks: {
-        label: (ctx) => ` ${formatCurrency(ctx.parsed.y)}`,
+        label: (ctx) => ` ${formatCurrency(Number(ctx.parsed.y))}`,
       },
     },
     legend: {

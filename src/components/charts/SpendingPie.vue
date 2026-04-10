@@ -51,7 +51,7 @@ const chartOptions: ChartOptions<'doughnut'> = {
       padding: 10,
       cornerRadius: 8,
       callbacks: {
-        label: (ctx) => ` ${formatCurrency(ctx.parsed)}`,
+        label: (ctx) => ` ${formatCurrency(Number(ctx.parsed))}`,
       },
     },
   },
