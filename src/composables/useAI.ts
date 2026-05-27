@@ -24,17 +24,24 @@ IMPORTANT: The input may contain MULTIPLE transactions. Split them into separate
 Rules:
 - "k" means thousand (e.g., 25k = 25000, 1.5k = 1500)
 - "jt" or "juta" means million (e.g., 10jt = 10000000)
+- "ribu" or "rb" means thousand (e.g., 15 ribu = 15000, 15rb = 15000)
 - Default currency is IDR (Indonesian Rupiah)
+- IMPORTANT: In Indonesian currency format, dots are THOUSANDS separators, NOT decimals! Examples:
+  - "Rp15.000" = 15000 (fifteen thousand)
+  - "Rp1.500.000" = 1500000 (one million five hundred thousand)
+  - "Rp150.000" = 150000 (one hundred fifty thousand)
+  - "50.000" = 50000 (fifty thousand)
+- If amount has no suffix and is a small number with no dots (e.g., 15), check context: "15 ribu" = 15000, but "15jt" = 15000000
 - Determine if each is "income" or "expense" based on context
 - Income keywords: received, got, earned, salary, paid (when receiving), transfer in, bonus, gaji, terima
-- Expense keywords: spent, bought, paid (when paying), for, on, beli, naik, bayar
+- Expense keywords: spent, bought, paid (when paying), for, on, beli, naik, bayar, makan
 - Categorize each into one of: food, transport, bills, entertainment, shopping, health, education, salary, freelance, investment, crypto, stocks, gift, other
 - Look for conjunctions like "terus", "dan", "lalu", "kemudian", "also", "then", "and" as separators for multiple transactions
 
 Input: "${input}"
 
 Respond ONLY with a valid JSON array, no markdown:
-[{"amount": <number>, "category": "<category>", "description": "<brief description>", "type": "<income|expense>"}]
+[{"amount": <number as integer, e.g. 15000 not 15>, "category": "<category>", "description": "<brief description>", "type": "<income|expense>"}]
 
 If only one transaction, still return an array with one item.`
 
@@ -180,27 +187,74 @@ If only one transaction, still return an array with one item.`
     const isIncome = incomeKeywords.some((k) => lower.includes(k))
     const type = isIncome ? 'income' : 'expense'
 
-    // Extract amount — take the LAST amount match in the segment (most likely the actual value)
+    // Extract amount — handle Indonesian currency formats
     let amount = 0
-    const amountRegex = /(\d+[.,]?\d*)\s*(k|jt|juta|rb|ribu)?/gi
-    let lastMatch: RegExpExecArray | null = null
-    let m: RegExpExecArray | null
 
-    while ((m = amountRegex.exec(lower)) !== null) {
-      lastMatch = m
+    // Priority 1: Match "Rp" prefixed amounts with dots as thousands separator (e.g., Rp15.000, Rp1.500.000)
+    const rpDotPattern = /rp\.?\s*(\d{1,3}(?:\.\d{3})+)/gi
+    let rpDotMatch: RegExpExecArray | null = null
+    let lastRpDotMatch: RegExpExecArray | null = null
+    while ((rpDotMatch = rpDotPattern.exec(lower)) !== null) {
+      lastRpDotMatch = rpDotMatch
     }
 
-    if (lastMatch) {
-      const numStr = lastMatch[1]!.replace(',', '.')
-      const num = parseFloat(numStr)
-      const suffix = lastMatch[2]?.toLowerCase()
+    // Priority 2: Match standalone amounts with dots as thousands separator (e.g., 15.000, 150.000)
+    const dotThousandPattern = /(?:^|\s)(\d{1,3}(?:\.\d{3})+)(?:\s|$|[^\d])/gi
+    let dotMatch: RegExpExecArray | null = null
+    let lastDotMatch: RegExpExecArray | null = null
+    while ((dotMatch = dotThousandPattern.exec(lower)) !== null) {
+      lastDotMatch = dotMatch
+    }
 
-      if (suffix === 'k' || suffix === 'rb' || suffix === 'ribu') {
-        amount = num * 1000
-      } else if (suffix === 'jt' || suffix === 'juta') {
-        amount = num * 1000000
+    if (lastRpDotMatch) {
+      // Rp15.000 → remove dots → 15000
+      amount = parseInt(lastRpDotMatch[1]!.replace(/\./g, ''), 10)
+    } else if (lastDotMatch) {
+      // 15.000 → remove dots → 15000
+      amount = parseInt(lastDotMatch[1]!.replace(/\./g, ''), 10)
+    } else {
+      // Priority 3: Match amounts with suffixes (k, jt, ribu, juta, rb) or plain numbers
+      // Also handle "X ribu" where ribu is separated by space
+      const amountWithWordSuffix = /(\d+[,.]?\d*)\s*(ribu|rb|k|jt|juta)/gi
+      let lastWordMatch: RegExpExecArray | null = null
+      let wm: RegExpExecArray | null
+      while ((wm = amountWithWordSuffix.exec(lower)) !== null) {
+        lastWordMatch = wm
+      }
+
+      if (lastWordMatch) {
+        const numStr = lastWordMatch[1]!.replace(',', '.')
+        const num = parseFloat(numStr)
+        const suffix = lastWordMatch[2]?.toLowerCase()
+
+        if (suffix === 'k' || suffix === 'rb' || suffix === 'ribu') {
+          amount = num * 1000
+        } else if (suffix === 'jt' || suffix === 'juta') {
+          amount = num * 1000000
+        }
       } else {
-        amount = num
+        // Priority 4: Match Rp followed by plain number (e.g., Rp15000)
+        const rpPlainPattern = /rp\.?\s*(\d+)/gi
+        let rpPlainMatch: RegExpExecArray | null = null
+        let lastRpPlain: RegExpExecArray | null = null
+        while ((rpPlainMatch = rpPlainPattern.exec(lower)) !== null) {
+          lastRpPlain = rpPlainMatch
+        }
+
+        if (lastRpPlain) {
+          amount = parseInt(lastRpPlain[1]!, 10)
+        } else {
+          // Priority 5: Fallback — take the last plain number
+          const plainNumberRegex = /(\d+[,.]?\d*)/gi
+          let lastPlain: RegExpExecArray | null = null
+          let pm: RegExpExecArray | null
+          while ((pm = plainNumberRegex.exec(lower)) !== null) {
+            lastPlain = pm
+          }
+          if (lastPlain) {
+            amount = parseFloat(lastPlain[1]!.replace(',', '.'))
+          }
+        }
       }
     }
 
