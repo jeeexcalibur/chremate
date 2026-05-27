@@ -88,6 +88,43 @@ function getCategoryInfo(category: TransactionCategory) {
           />
         </div>
 
+        <!-- Date Range Filter -->
+        <div class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+          <div class="flex items-center gap-2 flex-1">
+            <span class="text-sm flex-shrink-0">📅</span>
+            <div class="relative flex-1">
+              <input
+                v-model="transactionStore.dateFrom"
+                type="date"
+                class="w-full px-3 py-2 rounded-xl bg-card border border-input text-card-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                :max="transactionStore.dateTo || undefined"
+                title="From date"
+              />
+            </div>
+            <span class="text-xs text-muted-foreground flex-shrink-0">to</span>
+            <div class="relative flex-1">
+              <input
+                v-model="transactionStore.dateTo"
+                type="date"
+                class="w-full px-3 py-2 rounded-xl bg-card border border-input text-card-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                :min="transactionStore.dateFrom || undefined"
+                title="To date"
+              />
+            </div>
+          </div>
+          <button
+            v-if="transactionStore.dateFrom || transactionStore.dateTo"
+            @click="transactionStore.dateFrom = ''; transactionStore.dateTo = ''"
+            class="px-3 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-medium hover:bg-accent hover:text-card-foreground transition-all flex items-center gap-1 justify-center flex-shrink-0"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+            Clear dates
+          </button>
+        </div>
+
         <!-- Type Filter -->
         <div class="flex gap-2 flex-wrap">
           <button

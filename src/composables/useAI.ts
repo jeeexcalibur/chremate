@@ -35,7 +35,10 @@ Rules:
 - Determine if each is "income" or "expense" based on context
 - Income keywords: received, got, earned, salary, paid (when receiving), transfer in, bonus, gaji, terima
 - Expense keywords: spent, bought, paid (when paying), for, on, beli, naik, bayar, makan
+- Transfer keywords (use 'gift' category): transfer, kirim, kasih, buat mama, buat papa, buat ortu, ke mama, ke papa
 - Categorize each into one of: food, transport, bills, entertainment, shopping, health, education, salary, freelance, investment, crypto, stocks, gift, other
+- IMPORTANT: Transfers to people (family, friends) should use the 'gift' category
+- IMPORTANT: Investments, crypto purchases, and stock purchases should use their respective categories (investment, crypto, stocks)
 - Look for conjunctions like "terus", "dan", "lalu", "kemudian", "also", "then", "and" as separators for multiple transactions
 
 Input: "${input}"
@@ -287,6 +290,7 @@ If only one transaction, still return an array with one item.`
       [['shop', 'buy', 'beli', 'cloth', 'baju', 'shoe', 'sepatu', 'gadget', 'elektronik', 'online', 'tokped', 'shopee'], 'shopping'],
       [['health', 'doctor', 'dokter', 'medicine', 'obat', 'hospital', 'gym', 'fitness', 'vitamin', 'sakit'], 'health'],
       [['school', 'course', 'kursus', 'book', 'buku', 'education', 'tuition', 'class', 'kelas', 'study', 'belajar'], 'education'],
+      [['transfer', 'kirim', 'kasih', 'mama', 'papa', 'ortu', 'orang tua', 'adik', 'kakak', 'teman', 'friend', 'sedekah', 'donasi', 'sumbang'], 'gift'],
       [['crypto', 'bitcoin', 'eth', 'coin', 'kripto', 'doge', 'solana', 'usdt'], 'crypto'],
       [['stock', 'saham', 'invest', 'reksadana', 'mutual fund'], 'stocks'],
     ]

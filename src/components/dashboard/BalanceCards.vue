@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useTransactionStore } from '@/stores/transactions'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency } from '@/lib/utils'
-import { CATEGORIES, EXPENSE_CATEGORIES } from '@/types'
+import { CATEGORIES, BUDGET_CATEGORIES } from '@/types'
 
 const transactionStore = useTransactionStore()
 const authStore = useAuthStore()
@@ -37,10 +37,11 @@ const cards = computed(() => [
 
 const budgetUsed = computed(() => {
   const budget = authStore.user?.monthlyBudget || 5000000
-  const percentage = Math.min((transactionStore.monthlyExpenses / budget) * 100, 100)
+  // Use budget-aware spending (excludes investments & transfers)
+  const percentage = Math.min((transactionStore.monthlyBudgetSpending / budget) * 100, 100)
   return {
     percentage,
-    remaining: budget - transactionStore.monthlyExpenses,
+    remaining: budget - transactionStore.monthlyBudgetSpending,
     budget,
   }
 })
@@ -57,7 +58,7 @@ const activeCategoryBudgets = computed(() => {
   if (!authStore.user?.categoryBudgets) return []
   
   const list = []
-  for (const cat of EXPENSE_CATEGORIES) {
+  for (const cat of BUDGET_CATEGORIES) {
     const limit = authStore.user.categoryBudgets[cat]
     if (limit && limit > 0) {
       const spent = transactionStore.categoryBreakdown[cat] || 0

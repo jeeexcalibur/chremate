@@ -69,6 +69,13 @@ export const EXPENSE_CATEGORIES: TransactionCategory[] = [
   'food', 'transport', 'bills', 'entertainment', 'shopping', 'health', 'education', 'crypto', 'stocks', 'other'
 ]
 
+// Categories that count toward the monthly spending budget
+// Transfers (gift) and investments (investment, crypto, stocks) are excluded
+// because they represent money moved/saved, not consumed
+export const BUDGET_CATEGORIES: TransactionCategory[] = [
+  'food', 'transport', 'bills', 'entertainment', 'shopping', 'health', 'education', 'other'
+]
+
 export const INCOME_CATEGORIES: TransactionCategory[] = [
   'salary', 'freelance', 'investment', 'crypto', 'stocks', 'gift', 'other'
 ]

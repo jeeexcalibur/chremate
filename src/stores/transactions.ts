@@ -14,7 +14,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import type { Transaction, TransactionCategory } from '@/types'
+import { BUDGET_CATEGORIES, type Transaction, type TransactionCategory } from '@/types'
 import { isToday, isThisMonth, getLast7Days } from '@/lib/utils'
 
 export const useTransactionStore = defineStore('transactions', () => {
@@ -23,6 +23,8 @@ export const useTransactionStore = defineStore('transactions', () => {
   const searchQuery = ref('')
   const categoryFilter = ref<TransactionCategory | 'all'>('all')
   const typeFilter = ref<'all' | 'income' | 'expense'>('all')
+  const dateFrom = ref<string>('')
+  const dateTo = ref<string>('')
   let unsubscribe: Unsubscribe | null = null
 
   // Computed
@@ -46,6 +48,18 @@ export const useTransactionStore = defineStore('transactions', () => {
       result = result.filter((t) => t.type === typeFilter.value)
     }
 
+    if (dateFrom.value) {
+      const from = new Date(dateFrom.value)
+      from.setHours(0, 0, 0, 0)
+      result = result.filter((t) => t.timestamp >= from)
+    }
+
+    if (dateTo.value) {
+      const to = new Date(dateTo.value)
+      to.setHours(23, 59, 59, 999)
+      result = result.filter((t) => t.timestamp <= to)
+    }
+
     return result
   })
 
@@ -58,6 +72,14 @@ export const useTransactionStore = defineStore('transactions', () => {
   const monthlyExpenses = computed(() =>
     transactions.value
       .filter((t) => t.type === 'expense' && isThisMonth(t.timestamp))
+      .reduce((sum, t) => sum + t.amount, 0)
+  )
+
+  // Budget-aware spending: only counts consumptive categories
+  // Excludes investments (investment, crypto, stocks) and transfers (gift)
+  const monthlyBudgetSpending = computed(() =>
+    transactions.value
+      .filter((t) => t.type === 'expense' && isThisMonth(t.timestamp) && BUDGET_CATEGORIES.includes(t.category))
       .reduce((sum, t) => sum + t.amount, 0)
   )
 
@@ -205,9 +227,12 @@ export const useTransactionStore = defineStore('transactions', () => {
     searchQuery,
     categoryFilter,
     typeFilter,
+    dateFrom,
+    dateTo,
     filteredTransactions,
     monthlyIncome,
     monthlyExpenses,
+    monthlyBudgetSpending,
     totalBalance,
     todaySpending,
     categoryBreakdown,
