@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useTransactionStore } from '@/stores/transactions'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency } from '@/lib/utils'
+import { CATEGORIES, EXPENSE_CATEGORIES } from '@/types'
 
 const transactionStore = useTransactionStore()
 const authStore = useAuthStore()
@@ -50,6 +51,51 @@ const budgetStatus = computed(() => {
   if (pct >= 70) return { label: 'Warning', color: 'bg-warning', textColor: 'text-warning' }
   return { label: 'Healthy', color: 'bg-income', textColor: 'text-income' }
 })
+
+// Calculate active category budgets progress dynamically
+const activeCategoryBudgets = computed(() => {
+  if (!authStore.user?.categoryBudgets) return []
+  
+  const list = []
+  for (const cat of EXPENSE_CATEGORIES) {
+    const limit = authStore.user.categoryBudgets[cat]
+    if (limit && limit > 0) {
+      const spent = transactionStore.categoryBreakdown[cat] || 0
+      const percentage = Math.min((spent / limit) * 100, 100)
+      
+      // Status alert colors and tags
+      let statusColor = 'bg-income'
+      let textColor = 'text-income'
+      let alertLabel = 'Healthy'
+      
+      if (percentage >= 95) {
+        statusColor = 'bg-expense'
+        textColor = 'text-expense'
+        alertLabel = 'Over Budget'
+      } else if (percentage >= 75) {
+        statusColor = 'bg-warning'
+        textColor = 'text-warning'
+        alertLabel = 'Warning'
+      }
+
+      const catInfo = CATEGORIES[cat] || CATEGORIES.other
+
+      list.push({
+        category: cat,
+        limit,
+        spent,
+        remaining: Math.max(limit - spent, 0),
+        percentage,
+        statusColor,
+        textColor,
+        alertLabel,
+        icon: catInfo.icon,
+        label: catInfo.label,
+      })
+    }
+  }
+  return list
+})
 </script>
 
 <template>
@@ -73,7 +119,7 @@ const budgetStatus = computed(() => {
             <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">{{ card.title }}</span>
             <span class="text-xl">{{ card.icon }}</span>
           </div>
-          <p :class="['text-2xl sm:text-3xl font-bold', card.textColor]">
+          <p :class="['text-xl sm:text-2xl md:text-3xl font-bold', card.textColor]">
             {{ formatCurrency(card.amount) }}
           </p>
         </div>
@@ -88,7 +134,7 @@ const budgetStatus = computed(() => {
           <span class="text-xs font-medium uppercase tracking-wider text-muted-foreground">Today's Spending</span>
           <span class="text-xl animate-pulse-soft">🔥</span>
         </div>
-        <p class="text-2xl sm:text-3xl font-bold text-expense">
+        <p class="text-xl sm:text-2xl md:text-3xl font-bold text-expense">
           {{ formatCurrency(transactionStore.todaySpending) }}
         </p>
         <p class="text-xs text-muted-foreground mt-1">
@@ -121,6 +167,57 @@ const budgetStatus = computed(() => {
           <p class="text-sm text-muted-foreground">
             {{ budgetUsed.percentage.toFixed(0) }}%
           </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Category Budgets Card (Full Width) -->
+    <div
+      v-if="activeCategoryBudgets.length > 0"
+      class="bg-card rounded-2xl border border-border p-5 sm:p-6 shadow-sm shine animate-slide-up"
+      style="animation-delay: 300ms"
+    >
+      <div class="border-b border-border pb-3 mb-4">
+        <h3 class="text-xs font-bold text-card-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <span>🎯</span> Category-Specific Budgets
+        </h3>
+        <p class="text-[11px] text-muted-foreground mt-0.5 font-medium">Track remaining allowances for individual spending categories</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div
+          v-for="catBudget in activeCategoryBudgets"
+          :key="catBudget.category"
+          class="p-4 rounded-xl bg-muted/30 border border-border/40 hover:bg-muted/50 hover:border-border/60 transition-all flex flex-col gap-2"
+        >
+          <!-- Label & Alert -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">{{ catBudget.icon }}</span>
+              <span class="text-xs font-bold text-card-foreground">{{ catBudget.label }}</span>
+            </div>
+            <span :class="['text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider', catBudget.textColor, catBudget.statusColor + '/10']">
+              {{ catBudget.alertLabel }}
+            </span>
+          </div>
+
+          <!-- Mini Progress Bar -->
+          <div class="relative w-full h-2 bg-muted rounded-full overflow-hidden mt-1">
+            <div
+              :class="['h-full rounded-full transition-all duration-1000 ease-out', catBudget.statusColor]"
+              :style="{ width: `${catBudget.percentage}%` }"
+            ></div>
+          </div>
+
+          <!-- Spend details -->
+          <div class="flex justify-between items-center text-xs mt-1">
+            <p class="text-muted-foreground font-medium">
+              Spent: <span class="font-bold text-card-foreground">{{ formatCurrency(catBudget.spent) }}</span> of {{ formatCurrency(catBudget.limit) }}
+            </p>
+            <p :class="['font-semibold text-xs', catBudget.remaining > 0 ? 'text-card-foreground' : 'text-expense']">
+              {{ catBudget.remaining > 0 ? `${formatCurrency(catBudget.remaining)} left` : 'Over budget!' }}
+            </p>
+          </div>
         </div>
       </div>
     </div>

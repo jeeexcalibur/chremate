@@ -28,7 +28,7 @@ Rules:
 - Determine if each is "income" or "expense" based on context
 - Income keywords: received, got, earned, salary, paid (when receiving), transfer in, bonus, gaji, terima
 - Expense keywords: spent, bought, paid (when paying), for, on, beli, naik, bayar
-- Categorize each into one of: food, transport, bills, entertainment, shopping, health, education, salary, freelance, investment, gift, other
+- Categorize each into one of: food, transport, bills, entertainment, shopping, health, education, salary, freelance, investment, crypto, stocks, gift, other
 - Look for conjunctions like "terus", "dan", "lalu", "kemudian", "also", "then", "and" as separators for multiple transactions
 
 Input: "${input}"
@@ -217,6 +217,8 @@ If only one transaction, still return an array with one item.`
     if (type === 'income') {
       if (text.includes('salary') || text.includes('gaji')) return 'salary'
       if (text.includes('freelance') || text.includes('project')) return 'freelance'
+      if (text.includes('crypto') || text.includes('bitcoin') || text.includes('eth') || text.includes('coin') || text.includes('kripto') || text.includes('doge') || text.includes('solana') || text.includes('usdt')) return 'crypto'
+      if (text.includes('stock') || text.includes('saham') || text.includes('dividend') || text.includes('dividen') || text.includes('reksadana') || text.includes('mutual fund')) return 'stocks'
       if (text.includes('invest')) return 'investment'
       if (text.includes('gift') || text.includes('hadiah')) return 'gift'
       return 'salary'
@@ -231,6 +233,8 @@ If only one transaction, still return an array with one item.`
       [['shop', 'buy', 'beli', 'cloth', 'baju', 'shoe', 'sepatu', 'gadget', 'elektronik', 'online', 'tokped', 'shopee'], 'shopping'],
       [['health', 'doctor', 'dokter', 'medicine', 'obat', 'hospital', 'gym', 'fitness', 'vitamin', 'sakit'], 'health'],
       [['school', 'course', 'kursus', 'book', 'buku', 'education', 'tuition', 'class', 'kelas', 'study', 'belajar'], 'education'],
+      [['crypto', 'bitcoin', 'eth', 'coin', 'kripto', 'doge', 'solana', 'usdt'], 'crypto'],
+      [['stock', 'saham', 'invest', 'reksadana', 'mutual fund'], 'stocks'],
     ]
 
     for (const [keywords, category] of categoryMap) {

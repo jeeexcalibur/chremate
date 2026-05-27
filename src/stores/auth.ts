@@ -116,9 +116,12 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
   }
 
-  async function updateBudget(budget: number) {
+  async function updateBudget(budget: number, categoryBudgets?: Record<string, number>) {
     if (!user.value) return
     user.value.monthlyBudget = budget
+    if (categoryBudgets !== undefined) {
+      user.value.categoryBudgets = categoryBudgets
+    }
     await setDoc(doc(db, 'users', user.value.uid), user.value, { merge: true })
   }
 

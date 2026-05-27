@@ -170,7 +170,7 @@ function navigateTo(path: string) {
 
     <!-- Main Content -->
     <main class="flex-1">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         <slot />
       </div>
     </main>
@@ -183,7 +183,7 @@ function navigateTo(path: string) {
           :key="item.path"
           @click="navigateTo(item.path)"
           :class="[
-            'flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[56px]',
+            'flex flex-col items-center gap-0.5 px-2 sm:px-3 py-2 rounded-xl transition-all min-w-[48px] sm:min-w-[56px]',
             route.name === item.name
               ? 'text-primary'
               : 'text-muted-foreground',

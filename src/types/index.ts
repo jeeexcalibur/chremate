@@ -4,6 +4,7 @@ export interface User {
   displayName: string | null
   photoURL: string | null
   monthlyBudget: number
+  categoryBudgets?: Record<string, number>
   currency: string
 }
 
@@ -28,6 +29,8 @@ export type TransactionCategory =
   | 'salary'
   | 'freelance'
   | 'investment'
+  | 'crypto'
+  | 'stocks'
   | 'gift'
   | 'other'
 
@@ -56,14 +59,16 @@ export const CATEGORIES: Record<TransactionCategory, CategoryConfig> = {
   salary: { label: 'Salary', icon: '💰', color: '#10b981', bgColor: '#ecfdf5' },
   freelance: { label: 'Freelance', icon: '💻', color: '#8b5cf6', bgColor: '#f5f3ff' },
   investment: { label: 'Investment', icon: '📈', color: '#14b8a6', bgColor: '#f0fdfa' },
+  crypto: { label: 'Crypto', icon: '🪙', color: '#f59e0b', bgColor: '#fef3c7' },
+  stocks: { label: 'Stocks', icon: '📊', color: '#3b82f6', bgColor: '#eff6ff' },
   gift: { label: 'Gift', icon: '🎁', color: '#f43f5e', bgColor: '#fff1f2' },
   other: { label: 'Other', icon: '📦', color: '#64748b', bgColor: '#f8fafc' },
 }
 
 export const EXPENSE_CATEGORIES: TransactionCategory[] = [
-  'food', 'transport', 'bills', 'entertainment', 'shopping', 'health', 'education', 'other'
+  'food', 'transport', 'bills', 'entertainment', 'shopping', 'health', 'education', 'crypto', 'stocks', 'other'
 ]
 
 export const INCOME_CATEGORIES: TransactionCategory[] = [
-  'salary', 'freelance', 'investment', 'gift', 'other'
+  'salary', 'freelance', 'investment', 'crypto', 'stocks', 'gift', 'other'
 ]

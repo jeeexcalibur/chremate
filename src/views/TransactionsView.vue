@@ -75,7 +75,7 @@ function getCategoryInfo(category: TransactionCategory) {
       </div>
 
       <!-- Filters -->
-      <div class="flex flex-col sm:flex-row gap-3 animate-slide-up">
+      <div class="flex flex-col gap-3 animate-slide-up">
         <!-- Search -->
         <div class="relative flex-1">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
@@ -89,13 +89,13 @@ function getCategoryInfo(category: TransactionCategory) {
         </div>
 
         <!-- Type Filter -->
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
           <button
             v-for="type in ['all', 'income', 'expense'] as const"
             :key="type"
             @click="transactionStore.typeFilter = type"
             :class="[
-              'px-4 py-2.5 rounded-xl text-sm font-medium transition-all capitalize',
+              'px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-sm font-medium transition-all capitalize',
               transactionStore.typeFilter === type
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-card border border-input text-muted-foreground hover:bg-muted',
@@ -108,7 +108,7 @@ function getCategoryInfo(category: TransactionCategory) {
         <!-- Category Filter -->
         <select
           v-model="transactionStore.categoryFilter"
-          class="px-4 py-2.5 rounded-xl bg-card border border-input text-card-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-card border border-input text-card-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="all">All Categories</option>
           <option v-for="cat in allCategories" :key="cat" :value="cat">
@@ -136,12 +136,12 @@ function getCategoryInfo(category: TransactionCategory) {
         <div
           v-for="tx in transactionStore.filteredTransactions"
           :key="tx.id"
-          class="bg-card rounded-2xl border border-border p-4 sm:p-5 shadow-sm hover:shadow-md transition-all"
+          class="bg-card rounded-2xl border border-border p-3.5 sm:p-5 shadow-sm hover:shadow-md transition-all"
         >
           <!-- View Mode -->
-          <div v-if="editingId !== tx.id" class="flex items-center gap-3">
+          <div v-if="editingId !== tx.id" class="flex items-center gap-2.5 sm:gap-3">
             <div
-              class="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0"
+              class="w-9 h-9 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center text-base sm:text-lg flex-shrink-0"
               :style="{ backgroundColor: getCategoryInfo(tx.category).bgColor }"
             >
               {{ getCategoryInfo(tx.category).icon }}
@@ -247,7 +247,7 @@ function getCategoryInfo(category: TransactionCategory) {
           <!-- Delete Confirmation -->
           <div
             v-if="deletingId === tx.id"
-            class="mt-3 p-3 rounded-xl bg-destructive/5 border border-destructive/20 flex items-center justify-between"
+            class="mt-3 p-3 rounded-xl bg-destructive/5 border border-destructive/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0"
           >
             <p class="text-sm text-destructive">Delete this transaction?</p>
             <div class="flex gap-2">

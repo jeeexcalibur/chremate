@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 import { formatCurrency } from '@/lib/utils'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import { CATEGORIES, EXPENSE_CATEGORIES, type TransactionCategory } from '@/types'
 
 const authStore = useAuthStore()
 const { isDark, toggle: toggleTheme } = useTheme()
@@ -11,6 +12,14 @@ const { isDark, toggle: toggleTheme } = useTheme()
 const budgetInput = ref(authStore.user?.monthlyBudget || 5000000)
 const isSaving = ref(false)
 const showSaved = ref(false)
+
+// Category budgets inputs state
+const categoryBudgetsInput = ref<Record<string, number>>({})
+
+// Initialize category budgets from user profile
+if (authStore.user?.categoryBudgets) {
+  categoryBudgetsInput.value = { ...authStore.user.categoryBudgets }
+}
 
 const budgetPresets = [
   { label: '3 Juta', value: 3000000 },
@@ -24,7 +33,14 @@ const budgetPresets = [
 async function saveBudget() {
   isSaving.value = true
   try {
-    await authStore.updateBudget(budgetInput.value)
+    const budgetsToSave: Record<string, number> = {}
+    for (const cat of EXPENSE_CATEGORIES) {
+      const val = categoryBudgetsInput.value[cat]
+      if (val && val > 0) {
+        budgetsToSave[cat] = val
+      }
+    }
+    await authStore.updateBudget(budgetInput.value, budgetsToSave)
     showSaved.value = true
     setTimeout(() => showSaved.value = false, 3000)
   } catch (e) {
@@ -36,6 +52,10 @@ async function saveBudget() {
 
 function selectPreset(value: number) {
   budgetInput.value = value
+}
+
+function getCategoryInfo(category: string) {
+  return CATEGORIES[category as TransactionCategory] || CATEGORIES.other
 }
 </script>
 
@@ -133,6 +153,34 @@ function selectPreset(value: number) {
           </button>
         </div>
 
+        <!-- Category Budgets Section -->
+        <div class="mt-6 border-t border-border pt-6">
+          <h3 class="text-xs font-bold text-card-foreground uppercase tracking-wider mb-1">Category spending limits</h3>
+          <p class="text-[11px] text-muted-foreground mb-4">Define a custom limit for each expense category (leave blank/0 for no budget limit)</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div
+              v-for="cat in EXPENSE_CATEGORIES"
+              :key="cat"
+              class="flex flex-col gap-1 p-3.5 rounded-2xl bg-muted/40 border border-border/40 hover:border-border/80 hover:bg-muted/60 transition-all"
+            >
+              <div class="flex items-center gap-2">
+                <span class="text-lg">{{ getCategoryInfo(cat).icon }}</span>
+                <span class="text-xs font-semibold text-card-foreground">{{ getCategoryInfo(cat).label }}</span>
+              </div>
+              <div class="relative mt-2">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-semibold">Rp</span>
+                <input
+                  v-model.number="categoryBudgetsInput[cat]"
+                  type="number"
+                  placeholder="No limit"
+                  min="0"
+                  class="w-full pl-9 pr-3 py-2 rounded-xl bg-card border border-input text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring text-xs text-right font-medium"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Success Message -->
         <Transition
           enter-active-class="transition-all duration-300"
@@ -142,8 +190,8 @@ function selectPreset(value: number) {
           leave-from-class="opacity-100"
           leave-to-class="opacity-0"
         >
-          <div v-if="showSaved" class="mt-3 p-2 rounded-lg bg-income/10 text-income text-sm flex items-center gap-2">
-            <span>✅</span> Budget updated to {{ formatCurrency(budgetInput) }}
+          <div v-if="showSaved" class="mt-4 p-2 rounded-lg bg-income/10 text-income text-sm flex items-center gap-2">
+            <span>✅</span> Budgets successfully updated!
           </div>
         </Transition>
       </div>

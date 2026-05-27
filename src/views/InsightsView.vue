@@ -25,22 +25,22 @@ function getCategoryInfo(category: TransactionCategory) {
       </div>
 
       <!-- Summary Cards -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 animate-slide-up">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 animate-slide-up">
         <div class="bg-card rounded-2xl border border-border p-4 shadow-sm">
           <p class="text-xs text-muted-foreground mb-1">Avg/Day (7d)</p>
-          <p class="text-lg font-bold text-card-foreground">
+          <p class="text-base sm:text-lg font-bold text-card-foreground">
             {{ formatCurrency(transactionStore.last7DaysSpending.reduce((s, d) => s + d.total, 0) / 7) }}
           </p>
         </div>
         <div class="bg-card rounded-2xl border border-border p-4 shadow-sm">
           <p class="text-xs text-muted-foreground mb-1">Total Txns</p>
-          <p class="text-lg font-bold text-card-foreground">
+          <p class="text-base sm:text-lg font-bold text-card-foreground">
             {{ transactionStore.transactions.length }}
           </p>
         </div>
         <div class="bg-card rounded-2xl border border-border p-4 shadow-sm">
           <p class="text-xs text-muted-foreground mb-1">Biggest Expense</p>
-          <p class="text-lg font-bold text-expense">
+          <p class="text-base sm:text-lg font-bold text-expense">
             {{
               transactionStore.transactions.filter((t) => t.type === 'expense').length > 0
                 ? formatCurrency(Math.max(...transactionStore.transactions.filter((t) => t.type === 'expense').map((t) => t.amount)))
@@ -50,7 +50,7 @@ function getCategoryInfo(category: TransactionCategory) {
         </div>
         <div class="bg-card rounded-2xl border border-border p-4 shadow-sm">
           <p class="text-xs text-muted-foreground mb-1">Categories</p>
-          <p class="text-lg font-bold text-card-foreground">
+          <p class="text-base sm:text-lg font-bold text-card-foreground">
             {{ Object.keys(transactionStore.categoryBreakdown).length }}
           </p>
         </div>
@@ -72,10 +72,10 @@ function getCategoryInfo(category: TransactionCategory) {
           <table class="w-full">
             <thead>
               <tr class="border-b border-border">
-                <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Category</th>
-                <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Amount</th>
-                <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3">Share</th>
-                <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-5 py-3 hidden sm:table-cell">Bar</th>
+                <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-5 py-3">Category</th>
+                <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-5 py-3">Amount</th>
+                <th class="text-right text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-5 py-3">Share</th>
+                <th class="text-left text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 sm:px-5 py-3 hidden sm:table-cell">Bar</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border">
@@ -84,21 +84,21 @@ function getCategoryInfo(category: TransactionCategory) {
                 :key="category"
                 class="hover:bg-muted/50 transition-colors"
               >
-                <td class="px-5 py-3">
+                <td class="px-3 sm:px-5 py-3">
                   <div class="flex items-center gap-2">
                     <span>{{ getCategoryInfo(category as TransactionCategory).icon }}</span>
-                    <span class="text-sm font-medium text-card-foreground">
+                    <span class="text-sm font-medium text-card-foreground truncate">
                       {{ getCategoryInfo(category as TransactionCategory).label }}
                     </span>
                   </div>
                 </td>
-                <td class="text-right px-5 py-3 text-sm font-semibold text-card-foreground">
+                <td class="text-right px-3 sm:px-5 py-3 text-sm font-semibold text-card-foreground">
                   {{ formatCurrency(amount) }}
                 </td>
-                <td class="text-right px-5 py-3 text-sm text-muted-foreground">
+                <td class="text-right px-3 sm:px-5 py-3 text-sm text-muted-foreground">
                   {{ transactionStore.monthlyExpenses > 0 ? ((amount / transactionStore.monthlyExpenses) * 100).toFixed(1) : 0 }}%
                 </td>
-                <td class="px-5 py-3 hidden sm:table-cell">
+                <td class="px-3 sm:px-5 py-3 hidden sm:table-cell">
                   <div class="w-full bg-muted rounded-full h-2">
                     <div
                       class="h-2 rounded-full transition-all duration-500"

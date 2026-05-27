@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { useAI } from '@/composables/useAI'
 import { useTransactionStore } from '@/stores/transactions'
 import { useAuthStore } from '@/stores/auth'
@@ -17,6 +17,70 @@ const showSuccess = ref(false)
 const successCount = ref(0)
 const parsedResults = ref<ParsedTransaction[]>([])
 
+// Voice Speech Recognition State
+const isListening = ref(false)
+let recognition: any = null
+
+function initSpeechRecognition() {
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  if (!SpeechRecognition) {
+    console.warn('Speech Recognition is not supported by this browser.')
+    return
+  }
+
+  recognition = new SpeechRecognition()
+  recognition.continuous = false
+  recognition.interimResults = false
+  recognition.lang = 'id-ID' // Default to Indonesian for natural expressions
+
+  recognition.onstart = () => {
+    isListening.value = true
+  }
+
+  recognition.onerror = (e: any) => {
+    console.error('Speech recognition error:', e.error)
+    isListening.value = false
+  }
+
+  recognition.onend = () => {
+    isListening.value = false
+  }
+
+  recognition.onresult = (event: any) => {
+    const transcript = event.results[0]?.[0]?.transcript
+    if (transcript) {
+      input.value = transcript
+    }
+  }
+}
+
+function toggleListening() {
+  if (!recognition) {
+    initSpeechRecognition()
+  }
+
+  if (!recognition) {
+    alert('Voice input is not supported in this browser. Please try Google Chrome or Microsoft Edge.')
+    return
+  }
+
+  if (isListening.value) {
+    recognition.stop()
+  } else {
+    recognition.start()
+  }
+}
+
+onBeforeUnmount(() => {
+  if (recognition) {
+    try {
+      recognition.stop()
+    } catch (e) {
+      // Ignore if not running
+    }
+  }
+})
+
 const examples = [
   'Received 10jt salary',
   'Grab ke office 15k',
@@ -27,9 +91,13 @@ const examples = [
 const currentExample = ref(0)
 const placeholderText = computed(() => `Try: "${examples[currentExample.value]}"`)
 
-setInterval(() => {
+const intervalId = setInterval(() => {
   currentExample.value = (currentExample.value + 1) % examples.length
 }, 4000)
+
+onBeforeUnmount(() => {
+  clearInterval(intervalId)
+})
 
 async function handleSubmit() {
   if (!input.value.trim() || parsing.value) return
@@ -85,7 +153,7 @@ function getCategoryInfo(category: TransactionCategory) {
     <div class="relative group">
       <div class="absolute -inset-0.5 bg-gradient-to-r from-primary via-chart-3 to-chart-5 rounded-2xl opacity-30 group-hover:opacity-50 blur transition-opacity duration-300"></div>
 
-      <div class="relative bg-card rounded-2xl border border-border p-4 sm:p-6 shadow-lg">
+      <div class="relative bg-card rounded-2xl border border-border p-4 sm:p-6 shadow-lg animate-fade-in">
         <div class="flex items-center gap-2 mb-3">
           <span class="text-xl">✨</span>
           <h3 class="text-sm font-semibold text-card-foreground">Magic Bar</h3>
@@ -98,21 +166,41 @@ function getCategoryInfo(category: TransactionCategory) {
               id="magic-bar-input"
               v-model="input"
               type="text"
-              :placeholder="placeholderText"
+              :placeholder="isListening ? '🎙️ Listening... Speak now!' : placeholderText"
               :disabled="parsing"
-              class="w-full px-4 py-3 sm:py-3.5 rounded-xl bg-muted border border-input text-card-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all text-sm disabled:opacity-50"
+              :class="[
+                'w-full pl-4 pr-12 py-3 sm:py-3.5 rounded-xl bg-muted border text-card-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all text-sm disabled:opacity-50',
+                isListening ? 'ring-2 ring-rose-500/40 border-rose-500/50 bg-rose-500/5 shadow-md shadow-rose-500/5 animate-pulse' : 'border-input'
+              ]"
               autocomplete="off"
             />
-            <div v-if="parsing" class="absolute right-3 top-1/2 -translate-y-1/2">
-              <svg class="animate-spin h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
+            <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+              <div v-if="parsing">
+                <svg class="animate-spin h-5 w-5 text-primary" viewBox="0 0 24 24" fill="none">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              </div>
+              <button
+                v-else
+                type="button"
+                @click="toggleListening"
+                :class="[
+                  'p-1.5 rounded-lg transition-all hover:bg-accent flex items-center justify-center text-base',
+                  isListening ? 'text-rose-500 bg-rose-500/10 scale-110' : 'text-muted-foreground hover:text-foreground'
+                ]"
+                :title="isListening ? 'Stop recording voice' : 'Dictate transaction (voice-to-text)'"
+              >
+                <span class="relative flex h-4 w-4 items-center justify-center">
+                  <span v-if="isListening" class="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-75"></span>
+                  <span>🎙️</span>
+                </span>
+              </button>
             </div>
           </div>
           <button
             type="submit"
-            :disabled="!input.trim() || parsing"
+            :disabled="!input.trim() || parsing || isListening"
             class="px-5 py-3 sm:py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
           >
             Add
