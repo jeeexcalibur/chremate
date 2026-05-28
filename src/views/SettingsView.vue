@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency } from '@/lib/utils'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -8,8 +8,10 @@ import { CATEGORIES, BUDGET_CATEGORIES, type TransactionCategory } from '@/types
 const authStore = useAuthStore()
 
 const budgetInput = ref(authStore.user?.monthlyBudget || 5000000)
-const isSaving = ref(false)
-const showSaved = ref(false)
+const isSavingBudget = ref(false)
+const isSavingCategories = ref(false)
+const showBudgetSaved = ref(false)
+const showCategorySaved = ref(false)
 const showCategoryPicker = ref(false)
 
 // Category budgets inputs state
@@ -19,6 +21,45 @@ const categoryBudgetsInput = ref<Record<string, number>>({})
 if (authStore.user?.categoryBudgets) {
   categoryBudgetsInput.value = { ...authStore.user.categoryBudgets }
 }
+
+// Watch for user profile loading (fixes: categories disappearing after refresh)
+// When the component mounts before Firebase auth resolves, authStore.user is null.
+// This watcher syncs the local inputs once the profile arrives.
+let hasInitialized = !!authStore.user
+watch(() => authStore.user, (newUser) => {
+  if (newUser && !hasInitialized) {
+    hasInitialized = true
+    budgetInput.value = newUser.monthlyBudget || 5000000
+    if (newUser.categoryBudgets) {
+      categoryBudgetsInput.value = { ...newUser.categoryBudgets }
+    }
+  }
+}, { immediate: false })
+
+// Track the saved/active budget to compare against input
+const savedBudget = computed(() => authStore.user?.monthlyBudget || 5000000)
+const savedCategoryBudgets = computed(() => authStore.user?.categoryBudgets || {})
+
+// Check if there are unsaved changes — separate tracking
+const hasUnsavedBudgetChange = computed(() => {
+  return budgetInput.value !== savedBudget.value
+})
+
+const hasUnsavedCategoryChanges = computed(() => {
+  const saved = savedCategoryBudgets.value
+  const current = categoryBudgetsInput.value
+
+  for (const cat of BUDGET_CATEGORIES) {
+    const currentVal = current[cat]
+    const savedVal = saved[cat]
+    const currentExists = currentVal !== undefined && currentVal !== null
+    const savedExists = savedVal !== undefined && savedVal !== null
+
+    if (currentExists !== savedExists) return true
+    if (currentExists && savedExists && currentVal !== savedVal) return true
+  }
+  return false
+})
 
 const budgetPresets = [
   { label: '3 Juta', value: 3000000 },
@@ -42,8 +83,38 @@ const availableCategories = computed(() => {
   return BUDGET_CATEGORIES.filter(cat => !activeCategoryBudgets.value.includes(cat))
 })
 
-async function saveBudget() {
-  isSaving.value = true
+// Check if a specific category budget is saved (exists in Firestore)
+function isCategorySaved(cat: string): boolean {
+  const saved = savedCategoryBudgets.value
+  return saved[cat] !== undefined && saved[cat] !== null
+}
+
+// Check if a specific category budget has unsaved changes
+function categoryHasChanges(cat: string): boolean {
+  const savedVal = savedCategoryBudgets.value[cat]
+  const currentVal = categoryBudgetsInput.value[cat]
+  if (savedVal === undefined && currentVal !== undefined) return true
+  if (savedVal !== undefined && currentVal === undefined) return true
+  return savedVal !== currentVal
+}
+
+// Save ONLY the monthly budget (does not touch category budgets)
+async function saveMonthlyBudget() {
+  isSavingBudget.value = true
+  try {
+    await authStore.updateBudget(budgetInput.value)
+    showBudgetSaved.value = true
+    setTimeout(() => showBudgetSaved.value = false, 3000)
+  } catch (e) {
+    console.error('Failed to save monthly budget:', e)
+  } finally {
+    isSavingBudget.value = false
+  }
+}
+
+// Save ONLY the category budgets (does not touch monthly budget)
+async function saveCategoryBudgets() {
+  isSavingCategories.value = true
   try {
     const budgetsToSave: Record<string, number> = {}
     for (const cat of BUDGET_CATEGORIES) {
@@ -52,13 +123,13 @@ async function saveBudget() {
         budgetsToSave[cat] = val
       }
     }
-    await authStore.updateBudget(budgetInput.value, budgetsToSave)
-    showSaved.value = true
-    setTimeout(() => showSaved.value = false, 3000)
+    await authStore.updateBudget(savedBudget.value, budgetsToSave)
+    showCategorySaved.value = true
+    setTimeout(() => showCategorySaved.value = false, 3000)
   } catch (e) {
-    console.error('Failed to save budget:', e)
+    console.error('Failed to save category budgets:', e)
   } finally {
-    isSaving.value = false
+    isSavingCategories.value = false
   }
 }
 
@@ -107,7 +178,14 @@ function getCategoryInfo(category: string) {
 
       <!-- Budget Section -->
       <div class="bg-card rounded-2xl border border-border p-5 sm:p-6 shadow-sm animate-slide-up" style="animation-delay: 100ms">
-        <h2 class="text-sm font-semibold text-card-foreground uppercase tracking-wider mb-4">Monthly Budget</h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-card-foreground uppercase tracking-wider">Monthly Budget</h2>
+          <!-- Active budget indicator -->
+          <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-income/10 border border-income/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-income animate-pulse"></span>
+            <span class="text-[10px] font-semibold text-income">Active: {{ formatCurrency(savedBudget) }}</span>
+          </div>
+        </div>
         <p class="text-xs text-muted-foreground mb-4">Set your monthly spending limit to track your budget progress</p>
 
         <!-- Info badge about what counts -->
@@ -133,6 +211,7 @@ function getCategoryInfo(category: string) {
             ]"
           >
             {{ preset.label }}
+            <span v-if="preset.value === savedBudget && budgetInput !== preset.value" class="ml-1 text-[9px] opacity-70">✓</span>
           </button>
         </div>
 
@@ -143,18 +222,41 @@ function getCategoryInfo(category: string) {
             <input
               v-model.number="budgetInput"
               type="number"
-              class="w-full pl-12 pr-4 py-2.5 rounded-xl bg-muted border border-input text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all text-sm"
+              :class="[
+                'w-full pl-12 pr-4 py-2.5 rounded-xl bg-muted border text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all text-sm',
+                hasUnsavedBudgetChange ? 'border-amber-500/50 ring-1 ring-amber-500/20' : 'border-input',
+              ]"
               placeholder="Enter amount"
             />
           </div>
           <button
-            @click="saveBudget"
-            :disabled="isSaving"
-            class="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm hover:opacity-90 transition-all disabled:opacity-50"
+            @click="saveMonthlyBudget"
+            :disabled="isSavingBudget || !hasUnsavedBudgetChange"
+            :class="[
+              'px-5 py-2.5 rounded-xl font-medium text-sm transition-all disabled:opacity-50 flex items-center gap-2',
+              hasUnsavedBudgetChange
+                ? 'bg-primary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/25'
+                : 'bg-muted text-muted-foreground cursor-default',
+            ]"
           >
-            {{ isSaving ? 'Saving...' : 'Save' }}
+            <span v-if="hasUnsavedBudgetChange && !isSavingBudget" class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+            {{ isSavingBudget ? 'Saving...' : hasUnsavedBudgetChange ? 'Save Budget' : 'Saved ✓' }}
           </button>
         </div>
+
+        <!-- Budget saved success -->
+        <Transition
+          enter-active-class="transition-all duration-300"
+          enter-from-class="opacity-0 translate-y-1"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition-all duration-200"
+          leave-from-class="opacity-100"
+          leave-to-class="opacity-0"
+        >
+          <div v-if="showBudgetSaved" class="mt-3 p-2 rounded-lg bg-income/10 text-income text-xs flex items-center gap-2">
+            <span>✅</span> Monthly budget updated!
+          </div>
+        </Transition>
 
         <!-- Category Budgets Section -->
         <div class="mt-6 border-t border-border pt-6">
@@ -177,12 +279,30 @@ function getCategoryInfo(category: string) {
               <div
                 v-for="cat in activeCategoryBudgets"
                 :key="cat"
-                class="flex items-center gap-3 p-3.5 rounded-2xl bg-muted/40 border border-border/40 hover:border-border/80 hover:bg-muted/60 transition-all group"
+                :class="[
+                  'flex items-center gap-3 p-3.5 rounded-2xl transition-all group',
+                  isCategorySaved(cat) && !categoryHasChanges(cat)
+                    ? 'bg-income/5 border border-income/15 hover:border-income/30'
+                    : categoryHasChanges(cat)
+                      ? 'bg-amber-500/5 border border-amber-500/20 hover:border-amber-500/40'
+                      : 'bg-muted/40 border border-border/40 hover:border-border/80 hover:bg-muted/60',
+                ]"
               >
                 <!-- Category icon & name -->
                 <div class="flex items-center gap-2 min-w-0 flex-shrink-0">
                   <span class="text-lg">{{ getCategoryInfo(cat).icon }}</span>
-                  <span class="text-xs font-semibold text-card-foreground whitespace-nowrap">{{ getCategoryInfo(cat).label }}</span>
+                  <div class="flex flex-col">
+                    <span class="text-xs font-semibold text-card-foreground whitespace-nowrap">{{ getCategoryInfo(cat).label }}</span>
+                    <span v-if="isCategorySaved(cat) && !categoryHasChanges(cat)" class="text-[9px] text-income font-medium flex items-center gap-1">
+                      <span class="w-1 h-1 rounded-full bg-income"></span> Active
+                    </span>
+                    <span v-else-if="categoryHasChanges(cat)" class="text-[9px] text-amber-400 font-medium flex items-center gap-1">
+                      <span class="w-1 h-1 rounded-full bg-amber-400 animate-pulse"></span> Unsaved
+                    </span>
+                    <span v-else class="text-[9px] text-muted-foreground font-medium flex items-center gap-1">
+                      <span class="w-1 h-1 rounded-full bg-muted-foreground"></span> New
+                    </span>
+                  </div>
                 </div>
 
                 <!-- Budget input -->
@@ -193,7 +313,10 @@ function getCategoryInfo(category: string) {
                     type="number"
                     placeholder="Set limit"
                     min="0"
-                    class="w-full pl-9 pr-3 py-2 rounded-xl bg-card border border-input text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring text-xs text-right font-medium"
+                    :class="[
+                      'w-full pl-9 pr-3 py-2 rounded-xl bg-card text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring text-xs text-right font-medium',
+                      categoryHasChanges(cat) ? 'border border-amber-500/30' : 'border border-input',
+                    ]"
                   />
                 </div>
 
@@ -263,21 +386,37 @@ function getCategoryInfo(category: string) {
               </div>
             </Transition>
           </div>
-        </div>
 
-        <!-- Success Message -->
-        <Transition
-          enter-active-class="transition-all duration-300"
-          enter-from-class="opacity-0 translate-y-1"
-          enter-to-class="opacity-100 translate-y-0"
-          leave-active-class="transition-all duration-200"
-          leave-from-class="opacity-100"
-          leave-to-class="opacity-0"
-        >
-          <div v-if="showSaved" class="mt-4 p-2 rounded-lg bg-income/10 text-income text-sm flex items-center gap-2">
-            <span>✅</span> Budgets successfully updated!
-          </div>
-        </Transition>
+          <!-- Save Category Budgets button -->
+          <button
+            v-if="activeCategoryBudgets.length > 0"
+            @click="saveCategoryBudgets"
+            :disabled="isSavingCategories || !hasUnsavedCategoryChanges"
+            :class="[
+              'w-full mt-4 py-2.5 rounded-xl font-medium text-xs transition-all disabled:opacity-50 flex items-center justify-center gap-2',
+              hasUnsavedCategoryChanges
+                ? 'bg-primary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/25'
+                : 'bg-muted text-muted-foreground cursor-default',
+            ]"
+          >
+            <span v-if="hasUnsavedCategoryChanges && !isSavingCategories" class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+            {{ isSavingCategories ? 'Saving...' : hasUnsavedCategoryChanges ? 'Save Category Limits' : 'Category Limits Saved ✓' }}
+          </button>
+
+          <!-- Category saved success -->
+          <Transition
+            enter-active-class="transition-all duration-300"
+            enter-from-class="opacity-0 translate-y-1"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition-all duration-200"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+          >
+            <div v-if="showCategorySaved" class="mt-3 p-2 rounded-lg bg-income/10 text-income text-xs flex items-center gap-2">
+              <span>✅</span> Category spending limits updated!
+            </div>
+          </Transition>
+        </div>
       </div>
 
       <!-- Currency Section -->

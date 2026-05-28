@@ -33,13 +33,15 @@ Rules:
   - "50.000" = 50000 (fifty thousand)
 - If amount has no suffix and is a small number with no dots (e.g., 15), check context: "15 ribu" = 15000, but "15jt" = 15000000
 - Determine if each is "income" or "expense" based on context
-- Income keywords: received, got, earned, salary, paid (when receiving), transfer in, bonus, gaji, terima
+- Income keywords: received, got, earned, salary, paid (when receiving), transfer in, bonus, gaji, terima, pemasukan, pendapatan, penghasilan, masuk, diterima, hasil, jasa
+- IMPORTANT: "pemasukan" means income in Indonesian. If the user says "pemasukan", "hasil", or "jasa", the type MUST be "income", not "expense"
 - Expense keywords: spent, bought, paid (when paying), for, on, beli, naik, bayar, makan
 - Transfer keywords (use 'gift' category): transfer, kirim, kasih, buat mama, buat papa, buat ortu, ke mama, ke papa
 - Categorize each into one of: food, transport, bills, entertainment, shopping, health, education, salary, freelance, investment, crypto, stocks, gift, other
 - IMPORTANT: Transfers to people (family, friends) should use the 'gift' category
 - IMPORTANT: Investments, crypto purchases, and stock purchases should use their respective categories (investment, crypto, stocks)
 - Look for conjunctions like "terus", "dan", "lalu", "kemudian", "also", "then", "and" as separators for multiple transactions
+- IMPORTANT: "dan" is Indonesian for "and" and indicates MULTIPLE separate transactions. Always split on "dan"
 
 Input: "${input}"
 
@@ -92,7 +94,8 @@ If only one transaction, still return an array with one item.`
 
   function localParseMultiple(input: string): ParsedTransaction[] {
     // Split by common conjunctions/separators
-    const separators = /\b(?:terus|lalu|kemudian|dan juga|then|also|and then|selain itu|plus)\b|[;]/gi
+    // Note: \bdan\b is kept separate from "dan juga" to catch plain "dan" (Indonesian "and")
+    const separators = /\b(?:terus|lalu|kemudian|dan juga|dan\b|then|also|and then|selain itu|plus)\b|[;]/gi
     const parts = input.split(separators).map((s) => s.trim()).filter((s) => s.length > 0)
 
     // If no split happened, try a different approach: look for multiple amount patterns
@@ -119,74 +122,32 @@ If only one transaction, still return an array with one item.`
 
     if (matches.length <= 1) return [input]
 
-    // Split text into segments, each containing one amount
+    // Split text so each segment contains the text leading up to and including one amount.
+    // e.g. "hari ini makan ayam 20k beli bensin 200k" → ["hari ini makan ayam 20k", "beli bensin 200k"]
     const parts: string[] = []
+    let lastEnd = 0
     for (let i = 0; i < matches.length; i++) {
-      const currentMatch = matches[i]!
-      const amountEnd = currentMatch.index + currentMatch.length
-
-      // Find the start of this segment
-      let start: number
-      if (i === 0) {
-        start = 0
-      } else {
-        // Start from after the previous amount
-        const prevMatch = matches[i - 1]!
-        start = prevMatch.index + prevMatch.length
-      }
-
-      // Find the end of this segment
-      let end: number
-      if (i === matches.length - 1) {
-        end = input.length
-      } else {
-        // Go up to where the text before the next amount starts
-        // Look for a natural break point
-        const nextMatch = matches[i + 1]!
-        const textBetween = input.substring(amountEnd, nextMatch.index)
-        // Find the position after the amount where new context begins
-        const breakMatch = textBetween.match(/^[^a-zA-Z]*/)
-        const breakPos = breakMatch ? amountEnd + breakMatch[0].length : amountEnd
-        end = Math.max(breakPos, amountEnd)
-      }
-
-      // Include text before this amount + the amount itself
-      const segment = input.substring(start, i === matches.length - 1 ? end : amountEnd).trim()
+      const m = matches[i]!
+      const amountEnd = m.index + m.length
+      const segment = input.substring(lastEnd, amountEnd).trim()
       if (segment) parts.push(segment)
-
-      // If this is the last one, include trailing text
-      if (i === matches.length - 1 && amountEnd < input.length) {
-        // Already included above
+      lastEnd = amountEnd
+    }
+    // Append any trailing text to the last segment
+    if (lastEnd < input.length && parts.length > 0) {
+      const trailing = input.substring(lastEnd).trim()
+      if (trailing) {
+        parts[parts.length - 1] += ' ' + trailing
       }
     }
-
-    // If splitting didn't work well, try simpler approach
-    if (parts.length <= 1) {
-      // Split on amount boundaries: text before each amount belongs to that transaction
-      const result: string[] = []
-      let lastEnd = 0
-      for (let i = 0; i < matches.length; i++) {
-        const m = matches[i]!
-        const amountEnd = m.index + m.length
-        const segment = input.substring(lastEnd, amountEnd).trim()
-        if (segment) result.push(segment)
-        lastEnd = amountEnd
-      }
-      // Append any trailing text to the last segment
-      if (lastEnd < input.length && result.length > 0) {
-        result[result.length - 1] += input.substring(lastEnd)
-      }
-      return result.length > 1 ? result : [input]
-    }
-
-    return parts
+    return parts.length > 1 ? parts : [input]
   }
 
   function localParseSingle(input: string): ParsedTransaction {
     const lower = input.toLowerCase().trim()
 
     // Determine type
-    const incomeKeywords = ['received', 'got', 'earned', 'salary', 'gaji', 'bonus', 'income', 'transfer in', 'terima']
+    const incomeKeywords = ['received', 'got', 'earned', 'salary', 'gaji', 'bonus', 'income', 'transfer in', 'terima', 'pemasukan', 'pendapatan', 'penghasilan', 'masuk', 'diterima', 'hasil', 'jasa']
     const isIncome = incomeKeywords.some((k) => lower.includes(k))
     const type = isIncome ? 'income' : 'expense'
 
@@ -287,7 +248,7 @@ If only one transaction, still return an array with one item.`
       [['transport', 'taxi', 'grab', 'gojek', 'gas', 'fuel', 'bensin', 'bus', 'train', 'kereta', 'toll', 'tol', 'parking', 'parkir', 'ojol', 'ojek', 'naik', 'ride', 'uber', 'commute', 'kantor'], 'transport'],
       [['bill', 'electric', 'listrik', 'water', 'air', 'internet', 'wifi', 'phone', 'pulsa', 'rent', 'sewa', 'tagihan'], 'bills'],
       [['game', 'movie', 'film', 'netflix', 'spotify', 'subscribe', 'entertainment', 'hiburan', 'fun', 'play', 'nonton'], 'entertainment'],
-      [['shop', 'buy', 'beli', 'cloth', 'baju', 'shoe', 'sepatu', 'gadget', 'elektronik', 'online', 'tokped', 'shopee'], 'shopping'],
+      [['shop', 'buy', 'beli', 'cloth', 'baju', 'shoe', 'sepatu', 'gadget', 'elektronik', 'online', 'tokped', 'shopee', 'indomaret', 'alfamart'], 'shopping'],
       [['health', 'doctor', 'dokter', 'medicine', 'obat', 'hospital', 'gym', 'fitness', 'vitamin', 'sakit'], 'health'],
       [['school', 'course', 'kursus', 'book', 'buku', 'education', 'tuition', 'class', 'kelas', 'study', 'belajar'], 'education'],
       [['transfer', 'kirim', 'kasih', 'mama', 'papa', 'ortu', 'orang tua', 'adik', 'kakak', 'teman', 'friend', 'sedekah', 'donasi', 'sumbang'], 'gift'],
