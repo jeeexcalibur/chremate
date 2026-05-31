@@ -58,6 +58,32 @@ export function isThisMonth(date: Date): boolean {
   )
 }
 
+export function isLastMonth(date: Date): boolean {
+  const today = new Date()
+  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+  return (
+    date.getMonth() === lastMonth.getMonth() &&
+    date.getFullYear() === lastMonth.getFullYear()
+  )
+}
+
+export function getCurrentMonthKey(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+export function getLastMonthKey(): string {
+  const now = new Date()
+  const last = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}`
+}
+
+export function getMonthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split('-').map(Number)
+  const date = new Date(year!, month! - 1, 1)
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(date)
+}
+
 export function getStartOfMonth(): Date {
   const now = new Date()
   return new Date(now.getFullYear(), now.getMonth(), 1)

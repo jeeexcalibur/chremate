@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useBudgetPenalty } from '@/composables/useBudgetPenalty'
 import { formatCurrency } from '@/lib/utils'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { CATEGORIES, BUDGET_CATEGORIES, type TransactionCategory } from '@/types'
 
 const authStore = useAuthStore()
+const { hasPenalty, penaltyAmount, penaltyMonthLabel, effectiveBudget } = useBudgetPenalty()
 
 const budgetInput = ref(authStore.user?.monthlyBudget || 5000000)
 const isSavingBudget = ref(false)
@@ -196,6 +198,38 @@ function getCategoryInfo(category: string) {
             Investments, crypto, stocks, and transfers to people are excluded.
           </p>
         </div>
+
+        <!-- Budget Penalty Info -->
+        <Transition
+          enter-active-class="transition-all duration-300"
+          enter-from-class="opacity-0 translate-y-1"
+          enter-to-class="opacity-100 translate-y-0"
+        >
+          <div v-if="hasPenalty" class="mt-4 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
+            <div class="flex items-start gap-3">
+              <span class="text-lg flex-shrink-0 mt-0.5">⚠️</span>
+              <div class="flex-1 min-w-0">
+                <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">Over-Budget Carry-Over Active</h4>
+                <p class="text-[11px] text-muted-foreground leading-relaxed">
+                  You exceeded your budget by
+                  <span class="font-bold text-amber-300">{{ formatCurrency(penaltyAmount) }}</span>
+                  in {{ penaltyMonthLabel }}. Your effective budget this month is reduced.
+                </p>
+                <div class="flex items-center gap-3 mt-2">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-muted-foreground font-medium">Configured:</span>
+                    <span class="text-xs font-bold text-card-foreground">{{ formatCurrency(savedBudget) }}</span>
+                  </div>
+                  <span class="text-muted-foreground text-xs">→</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-amber-400 font-medium">Effective:</span>
+                    <span class="text-xs font-bold text-amber-300">{{ formatCurrency(effectiveBudget) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
 
         <!-- Presets -->
         <div class="flex flex-wrap gap-2 mb-4">

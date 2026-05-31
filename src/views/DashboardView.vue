@@ -4,6 +4,7 @@ import { useTransactionStore } from '@/stores/transactions'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import MagicBar from '@/components/magic-bar/MagicBar.vue'
 import BalanceCards from '@/components/dashboard/BalanceCards.vue'
+import BudgetPenaltyBanner from '@/components/dashboard/BudgetPenaltyBanner.vue'
 import RecentTransactions from '@/components/dashboard/RecentTransactions.vue'
 import SpendingPie from '@/components/charts/SpendingPie.vue'
 import TrendLine from '@/components/charts/TrendLine.vue'
@@ -21,6 +22,11 @@ const transactionStore = useTransactionStore()
           Hello, {{ authStore.user?.displayName?.split(' ')[0] || 'there' }} 👋
         </h1>
         <p class="text-muted-foreground mt-1">Here's your financial overview for today</p>
+      </div>
+
+      <!-- Budget Penalty Banner -->
+      <div class="animate-slide-up" style="animation-delay: 50ms">
+        <BudgetPenaltyBanner />
       </div>
 
       <!-- Magic Bar -->

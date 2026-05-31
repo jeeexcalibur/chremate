@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { BUDGET_CATEGORIES, type Transaction, type TransactionCategory } from '@/types'
-import { isToday, isThisMonth, getLast7Days } from '@/lib/utils'
+import { isToday, isThisMonth, isLastMonth, getLast7Days } from '@/lib/utils'
 
 export const useTransactionStore = defineStore('transactions', () => {
   const transactions = ref<Transaction[]>([])
@@ -80,6 +80,13 @@ export const useTransactionStore = defineStore('transactions', () => {
   const monthlyBudgetSpending = computed(() =>
     transactions.value
       .filter((t) => t.type === 'expense' && isThisMonth(t.timestamp) && BUDGET_CATEGORIES.includes(t.category))
+      .reduce((sum, t) => sum + t.amount, 0)
+  )
+
+  // Last month's budget-aware spending (for carry-over calculation)
+  const lastMonthBudgetSpending = computed(() =>
+    transactions.value
+      .filter((t) => t.type === 'expense' && isLastMonth(t.timestamp) && BUDGET_CATEGORIES.includes(t.category))
       .reduce((sum, t) => sum + t.amount, 0)
   )
 
@@ -233,6 +240,7 @@ export const useTransactionStore = defineStore('transactions', () => {
     monthlyIncome,
     monthlyExpenses,
     monthlyBudgetSpending,
+    lastMonthBudgetSpending,
     totalBalance,
     todaySpending,
     categoryBreakdown,

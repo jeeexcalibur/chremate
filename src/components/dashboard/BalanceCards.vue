@@ -4,9 +4,11 @@ import { useTransactionStore } from '@/stores/transactions'
 import { useAuthStore } from '@/stores/auth'
 import { formatCurrency } from '@/lib/utils'
 import { CATEGORIES, BUDGET_CATEGORIES } from '@/types'
+import { useBudgetPenalty } from '@/composables/useBudgetPenalty'
 
 const transactionStore = useTransactionStore()
 const authStore = useAuthStore()
+const { hasPenalty, penaltyAmount, effectiveBudget: effectiveBudgetAmount } = useBudgetPenalty()
 
 const cards = computed(() => [
   {
@@ -36,13 +38,14 @@ const cards = computed(() => [
 ])
 
 const budgetUsed = computed(() => {
-  const budget = authStore.user?.monthlyBudget || 5000000
+  const budget = effectiveBudgetAmount.value
   // Use budget-aware spending (excludes investments & transfers)
   const percentage = Math.min((transactionStore.monthlyBudgetSpending / budget) * 100, 100)
   return {
     percentage,
     remaining: budget - transactionStore.monthlyBudgetSpending,
     budget,
+    originalBudget: authStore.user?.monthlyBudget || 5000000,
   }
 })
 
@@ -167,6 +170,15 @@ const activeCategoryBudgets = computed(() => {
           </p>
           <p class="text-sm text-muted-foreground">
             {{ budgetUsed.percentage.toFixed(0) }}%
+          </p>
+        </div>
+
+        <!-- Penalty indicator -->
+        <div v-if="hasPenalty" class="mt-3 flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/15">
+          <span class="text-xs">⚠️</span>
+          <p class="text-[11px] text-amber-400 font-medium leading-snug">
+            Budget reduced by <span class="font-bold">{{ formatCurrency(penaltyAmount) }}</span> due to last month's overspending.
+            <span class="text-amber-400/60">Original: {{ formatCurrency(budgetUsed.originalBudget) }}</span>
           </p>
         </div>
       </div>

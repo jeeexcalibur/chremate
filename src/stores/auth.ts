@@ -12,7 +12,7 @@ import {
 } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
-import type { User } from '@/types'
+import type { User, BudgetPenalty } from '@/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -125,6 +125,25 @@ export const useAuthStore = defineStore('auth', () => {
     await setDoc(doc(db, 'users', user.value.uid), user.value, { merge: true })
   }
 
+  async function updateBudgetPenalty(penalty: BudgetPenalty) {
+    if (!user.value) return
+    user.value.budgetPenalty = penalty
+    await setDoc(doc(db, 'users', user.value.uid), { budgetPenalty: penalty }, { merge: true })
+  }
+
+  async function acknowledgePenalty() {
+    if (!user.value?.budgetPenalty) return
+    user.value.budgetPenalty.acknowledged = true
+    await setDoc(doc(db, 'users', user.value.uid), { budgetPenalty: user.value.budgetPenalty }, { merge: true })
+  }
+
+  async function clearPenalty() {
+    if (!user.value) return
+    user.value.budgetPenalty = undefined
+    const { deleteField } = await import('firebase/firestore')
+    await setDoc(doc(db, 'users', user.value.uid), { budgetPenalty: deleteField() }, { merge: true })
+  }
+
   function getErrorMessage(code: string): string {
     switch (code) {
       case 'auth/user-not-found': return 'No account found with this email.'
@@ -150,5 +169,8 @@ export const useAuthStore = defineStore('auth', () => {
     loginWithGoogle,
     logout,
     updateBudget,
+    updateBudgetPenalty,
+    acknowledgePenalty,
+    clearPenalty,
   }
 })

@@ -4,6 +4,7 @@ import { useTransactionStore } from '@/stores/transactions'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import SpendingPie from '@/components/charts/SpendingPie.vue'
 import TrendLine from '@/components/charts/TrendLine.vue'
+import MonthlyReportCard from '@/components/charts/MonthlyReportCard.vue'
 import { formatCurrency } from '@/lib/utils'
 import { CATEGORIES, type TransactionCategory } from '@/types'
 
@@ -60,6 +61,11 @@ function getCategoryInfo(category: TransactionCategory) {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-slide-up" style="animation-delay: 100ms">
         <TrendLine />
         <SpendingPie />
+      </div>
+
+      <!-- Monthly Report Card -->
+      <div class="animate-slide-up" style="animation-delay: 150ms">
+        <MonthlyReportCard />
       </div>
 
       <!-- Category Breakdown Table -->

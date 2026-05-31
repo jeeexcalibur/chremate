@@ -4,15 +4,18 @@ import { RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTransactionStore } from '@/stores/transactions'
 import { useTheme } from '@/composables/useTheme'
+import { useBudgetPenalty } from '@/composables/useBudgetPenalty'
 import { Analytics } from '@vercel/analytics/vue'
 
 const authStore = useAuthStore()
 const transactionStore = useTransactionStore()
 const { init: initTheme } = useTheme()
+const { init: initPenalty } = useBudgetPenalty()
 
 onMounted(() => {
   authStore.init()
   initTheme()
+  initPenalty()
 })
 
 watch(

@@ -6,6 +6,13 @@ export interface User {
   monthlyBudget: number
   categoryBudgets?: Record<string, number>
   currency: string
+  budgetPenalty?: BudgetPenalty
+}
+
+export interface BudgetPenalty {
+  amount: number           // How much was over budget
+  fromMonth: string        // "2026-05" format — which month caused it
+  acknowledged: boolean    // Whether user has seen the notification
 }
 
 export interface Transaction {
